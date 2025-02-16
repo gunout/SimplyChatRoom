@@ -7,13 +7,9 @@ Simple Chat Room
 /votre-projet
 
 │
-
 ├── /public
-
 │   └── index.html  (votre fichier HTML)
-
 │
-
 └── index.js  (votre fichier contenant le code du serveur)
 
 

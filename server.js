@@ -7,8 +7,8 @@ const app = express();
 
 // Configurations HTTPS
 const options = {
-  key: fs.readFileSync('localhost.key'), // Chemin vers votre fichier clé
-  cert: fs.readFileSync('localhost.crt') // Chemin vers votre fichier certificat
+  key: fs.readFileSync('https://github.com/gunout/SimplyChatRoom/blob/main/localhost.key?raw=true'), // Chemin vers votre fichier clé
+  cert: fs.readFileSync('https://github.com/gunout/SimplyChatRoom/blob/main/localhost.crt?raw=true') // Chemin vers votre fichier certificat
 };
 
 // Création du serveur HTTPS

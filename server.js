@@ -7,8 +7,8 @@ const app = express();
 
 // Configurations HTTPS
 const options = {
-  key: fs.readFileSync('/home/gleaphe/Desktop/Cyber/localhost.key'), // Chemin vers votre fichier clé
-  cert: fs.readFileSync('/home/gleaphe/Desktop/Cyber/localhost.crt') // Chemin vers votre fichier certificat
+  key: fs.readFileSync('localhost.key'), // Chemin vers votre fichier clé
+  cert: fs.readFileSync('localhost.crt') // Chemin vers votre fichier certificat
 };
 
 // Création du serveur HTTPS

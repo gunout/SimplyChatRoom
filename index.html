@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Cyberpunk</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Courier New', Courier, monospace;
+            color: #00ffcc;
+            overflow: hidden;
+            background: linear-gradient(180deg, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.7) 100%);
+            position: relative;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            position: relative;
+            z-index: 1;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .webcam-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        video {
+            border: 2px solid #00ffcc;
+            border-radius: 10px;
+            width: 100%;
+            max-width: 300px;
+            margin: 10px;
+        }
+
+        .chat-container {
+            background-color: rgba(26, 26, 26, 0.9);
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 0 10px rgba(0, 255, 204, 0.5);
+        }
+
+        #messages {
+            height: 300px;
+            overflow-y: scroll;
+            margin-bottom: 10px;
+            background-color: #0d0d0d;
+            padding: 10px;
+            border-radius: 10px;
+            border: 1px solid #00ffcc;
+        }
+
+        #usernameInput, #messageInput {
+            width: 48%;
+            padding: 10px;
+            border: 1px solid #00ffcc;
+            border-radius: 5px;
+            background: #1a1a1a;
+            color: #00ffcc;
+            margin-right: 2%;
+        }
+
+        button {
+            padding: 10px;
+            background-color: #00ffcc;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            color: black;
+        }
+
+        button:hover {
+            background-color: #00cc99;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Chat Cyberpunk</h1>
+        </header>
+        <div class="webcam-container" id="webcamContainer"></div>
+        <div class="chat-container">
+            <div id="messages"></div>
+            <input id="usernameInput" type="text" placeholder="Votre nom...">
+            <input id="messageInput" type="text" placeholder="Tapez votre message...">
+            <button id="sendButton">Envoyer</button>
+            <button id="shareScreenButton">Partager l'écran</button>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        const webcamContainer = document.getElementById('webcamContainer');
+        const messagesDiv = document.getElementById('messages');
+        const usernameInput = document.getElementById('usernameInput');
+        const messageInput = document.getElementById('messageInput');
+        const sendButton = document.getElementById('sendButton');
+        const shareScreenButton = document.getElementById('shareScreenButton');
+
+        // Obtenir l'accès à la webcam et au microphone
+        navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+            .then((stream) => {
+                const videoElement = document.createElement('video');
+                videoElement.srcObject = stream;
+                videoElement.autoplay = true;
+                webcamContainer.appendChild(videoElement);
+                socket.emit('broadcaster', stream);
+            })
+            .catch((error) => {
+                console.error("Erreur d'accès à la webcam : ", error);
+            });
+
+        // Recevoir les flux vidéo des autres utilisateurs
+        socket.on('viewer', (stream) => {
+            const videoElement = document.createElement('video');
+            videoElement.srcObject = stream;
+            videoElement.autoplay = true;
+            webcamContainer.appendChild(videoElement);
+        });
+
+        // Fonction pour partager l'écran
+        shareScreenButton.addEventListener('click', () => {
+            navigator.mediaDevices.getDisplayMedia({ video: true, audio: true })
+                .then((screenStream) => {
+                    const screenVideoElement = document.createElement('video');
+                    screenVideoElement.srcObject = screenStream;
+                    screenVideoElement.autoplay = true;
+                    webcamContainer.appendChild(screenVideoElement);
+                    socket.emit('broadcaster', screenStream);
+
+                    // Arrêter le partage d'écran lorsque l'utilisateur met fin à la session
+                    screenStream.getTracks().forEach(track => {
+                        track.onended = () => {
+                            screenVideoElement.remove();
+                        };
+                    });
+                })
+                .catch((error) => {
+                    console.error("Erreur lors du partage d'écran : ", error);
+                });
+        });
+
+        sendButton.addEventListener('click', () => {
+            const username = usernameInput.value.trim();
+            const message = messageInput.value.trim();
+            if (username && message) {
+                const messageElement = document.createElement('div');
+                messageElement.textContent = `${username}: ${message}`;
+                messagesDiv.appendChild(messageElement);
+                messageInput.value = '';
+                messagesDiv.scrollTop = messagesDiv.scrollHeight; // Scroll to the bottom
+            }
+        });
+    </script>
+</body>
+</html>
+
+
+
+
+

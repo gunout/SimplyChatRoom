@@ -9,7 +9,8 @@ const io = socketIo(server);
 // Remplacez par vos données de flux réelles
 const streamData = "Données de flux";
 
-app.use(express.static(__dirname + '/public')); // Assurez-vous que votre fichier HTML est dans le dossier public
+// Servir les fichiers statiques du dossier public
+app.use(express.static(__dirname + '/public'));
 
 app.get('/stream', (req, res) => {
     res.writeHead(200, { 'Content-Type': 'text/plain' });
@@ -29,7 +30,7 @@ io.on('connection', (socket) => {
     });
 });
 
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
     console.log(`Serveur en cours d'exécution sur http://localhost:${PORT}`);
 });

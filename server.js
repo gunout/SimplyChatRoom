@@ -1,39 +1,78 @@
+const express = require('express');
 const https = require('https');
 const fs = require('fs');
-const express = require('express');
 const socketIo = require('socket.io');
 
+// Initialisation de l'application Express  
 const app = express();
 
-// Configurations HTTPS
+// Configurations HTTPS  
 const options = {
-  key: fs.readFileSync('https://github.com/gunout/SimplyChatRoom/blob/main/localhost.key?raw=true'), // Chemin vers votre fichier clé
-  cert: fs.readFileSync('https://github.com/gunout/SimplyChatRoom/blob/main/localhost.crt?raw=true') // Chemin vers votre fichier certificat
+    key: fs.readFileSync('/home/gleaphe/Desktop/Cyber/localhost.key'),
+    cert: fs.readFileSync('/home/gleaphe/Desktop/Cyber/localhost.crt')
 };
 
-// Création du serveur HTTPS
+// Création du serveur HTTPS  
 const server = https.createServer(options, app);
-const io = socketIo(server);
+const io = socketIo(server); // Attacher Socket.IO au serveur HTTPS
 
-// Middleware pour servir des fichiers statiques
 app.use(express.static('public'));
 
-// Gestion des connexions Socket.IO
+app.get('/', (req, res) => {
+    res.sendFile(__dirname + '/public/index.html');
+});
+
+// Stockage des utilisateurs connectés  
+const connectedUsers = {}; // Object pour stocker les utilisateurs
+
 io.on('connection', (socket) => {
     console.log('Un utilisateur est connecté');
 
+    // Écouter l'événement 'join' pour l'authentification des utilisateurs  
+    socket.on('join', (username) => {
+        if (!username || username.trim() === '') {
+            console.log('Connexion refusée : nom d\'utilisateur manquant.');
+            socket.disconnect(); // Déconnecter l'utilisateur  
+            return;
+        }
+
+        connectedUsers[socket.id] = username; // Ajouter l'utilisateur à la liste  
+        io.emit('updateUserList', Object.values(connectedUsers)); // Mettre à jour la liste des utilisateurs pour tous  
+        console.log(`${username} a rejoint`);
+
+        // Informer l'utilisateur qui se connecte de la liste des autres utilisateurs  
+        socket.emit('updateUserList', Object.values(connectedUsers));
+    });
+
+    // Écouter l'événement 'broadcaster' pour le streaming  
     socket.on('broadcaster', (stream) => {
-        socket.broadcast.emit('viewer', stream);
+        // Émettre le flux aux autres utilisateurs  
+        socket.broadcast.emit('viewer', { id: socket.id, stream }); 
+    });
+
+    // Écouter l'événement 'chatMessage'  
+    socket.on('chatMessage', (data) => {
+        if (connectedUsers[socket.id]) {
+            // Émettre le message à tous les clients connectés  
+            io.emit('chatMessage', data); 
+        } else {
+            console.log('Message refusé : utilisateur non authentifié.');
+            socket.emit('unauthorized', 'Vous devez vous authentifier pour envoyer des messages.');
+        }
     });
 
     socket.on('disconnect', () => {
-        console.log('Un utilisateur est déconnecté');
+        // Retirer l'utilisateur de la liste des connectés  
+        const username = connectedUsers[socket.id];
+        delete connectedUsers[socket.id];
+        io.emit('updateUserList', Object.values(connectedUsers)); // Mettre à jour la liste des utilisateurs  
+        console.log(`${username} s'est déconnecté`);
     });
 });
 
-// Port d'écoute
+// Démarrer le serveur  
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
+server.listen(PORT, '0.0.0.0', () => {
     console.log(`Serveur en cours d'exécution sur https://localhost:${PORT}`);
 });
 

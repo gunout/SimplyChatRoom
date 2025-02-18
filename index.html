@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebChat avec Webcams</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Arial', sans-serif;
+            color: white;
+            background: linear-gradient(to right, rgba(75, 0, 130, 1), rgba(0, 255, 255, 1), rgba(50, 50, 50, 1));
+            height: 100vh; /* Prendre toute la hauteur de la fenêtre */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative; /* Ajouté pour positionner la vidéo d'arrière-plan */
+        }
+
+        video.background-video {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover; /* Couvrir tout l'écran */
+            z-index: -1; /* Derrière les autres éléments */
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .webcam-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            max-width: 100%; /* Limite la largeur du conteneur */
+            margin-bottom: 20px;
+        }
+
+        video {
+            border: 2px solid #00ffcc;
+            border-radius: 10px;
+            width: 250px; /* Taille fixe pour les vidéos */
+            height: auto;
+            margin: 10px;
+            z-index: 1; /* S'assurer que les vidéos sont au-dessus */
+        }
+
+        .chat-container {
+            background-color: rgba(26, 26, 26, 0.9);
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 0 20px rgba(0, 255, 204, 0.5);
+            display: flex;
+            flex-direction: column;
+            width: 90%; /* Largeur fixe pour le chat */
+            max-width: 400px; /* Limite de largeur pour le chat */
+            z-index: 1; /* S'assurer que le chat est au-dessus */
+        }
+
+        #messages {
+            flex-grow: 1;
+            max-height: 200px;
+            overflow-y: auto;
+            margin-bottom: 10px;
+            background-color: #1a1a1a;
+            padding: 10px;
+            border-radius: 10px;
+            border: 1px solid #00ffcc;
+        }
+
+        #usernameInput,
+        #messageInput,
+        #radioUrlInput {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #00ffcc;
+            border-radius: 5px;
+            background: #1a1a1a;
+            color: #00ffcc;
+            margin-bottom: 5px;
+        }
+
+        button {
+            padding: 10px;
+            background-color: #00ffcc;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            color: black;
+            width: 100%;
+            margin-bottom: 5px;
+        }
+
+        button:hover {
+            background-color: #00cc99;
+        }
+    </style>
+    <script src="/socket.io/socket.io.js"></script>
+</head>
+
+<body>
+    <video class="background-video" autoplay loop muted>
+        <source src="/home/gleaphe/Desktop/Cyber/public/beach.mp4" type="video/mp4"> <!-- Remplacez par le chemin de votre vidéo ou URL -->
+        Votre navigateur ne prend pas en charge la vidéo HTML5.
+    </video>
+
+    <header>
+        <h1>WebChat avec Webcams</h1>
+    </header>
+
+    <div class="webcam-container" id="webcamContainer"></div>
+
+    <div class="chat-container">
+        <div id="messages"></div>
+        <input id="usernameInput" type="text" placeholder="Votre nom...">
+        <input id="messageInput" type="text" placeholder="Tapez votre message...">
+        <input id="radioUrlInput" type="text" placeholder="URL de la radio (ex: http://82.145.41.8:16123)">
+        <button id="playRadioButton">Jouer Radio</button>
+        <button id="pauseRadioButton">Mettre en Pause</button>
+        <button id="stopRadioButton">Arrêter</button>
+        <input id="volumeControl" type="range" min="0" max="1" step="0.1" value="1"> <!-- Contrôle du volume -->
+        <button id="sendButton">Envoyer</button>
+        <button id="shareScreenButton">Partager l'écran</button>
+    </div>
+
+    <script>
+        const socket = io();
+        const webcamContainer = document.getElementById('webcamContainer');
+        const messagesDiv = document.getElementById('messages');
+        const usernameInput = document.getElementById('usernameInput');
+        const messageInput = document.getElementById('messageInput');
+        const radioUrlInput = document.getElementById('radioUrlInput');
+        const sendButton = document.getElementById('sendButton');
+        const shareScreenButton = document.getElementById('shareScreenButton');
+        const playRadioButton = document.getElementById('playRadioButton');
+        const pauseRadioButton = document.getElementById('pauseRadioButton');
+        const stopRadioButton = document.getElementById('stopRadioButton');
+        const volumeControl = document.getElementById('volumeControl');
+
+        let localStream;
+        let audioElement = new Audio(); // Créer un élément audio pour la radio
+
+        // Fonction pour commencer la webcam  
+        async function startWebcam() {
+            try {
+                localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                addLocalVideo(localStream);
+                socket.emit('broadcaster', localStream);
+            } catch (error) {
+                console.error("Erreur d'accès à la webcam : ", error);
+            }
+        }
+
+        function addLocalVideo(stream) {
+            const videoElement = document.createElement('video');
+            videoElement.srcObject = stream;
+            videoElement.autoplay = true;
+            videoElement.muted = true; // Muet pour éviter l'écho  
+            webcamContainer.appendChild(videoElement);
+        }
+
+        // Recevoir le flux vidéo des autres utilisateurs  
+        socket.on('broadcaster', (stream) => {
+            const videoElement = document.createElement('video');
+            videoElement.srcObject = stream;
+            videoElement.autoplay = true;
+            webcamContainer.appendChild(videoElement);
+        });
+
+        // Démarrer la webcam lorsque la page est chargée  
+        window.onload = startWebcam;
+
+        // Fonction pour partager l'écran  
+        shareScreenButton.addEventListener('click', () => {
+            navigator.mediaDevices.getDisplayMedia({ video: true, audio: true })
+                .then((screenStream) => {
+                    addLocalVideo(screenStream);
+                    socket.emit('broadcaster', screenStream);
+
+                    // Gérer la fin du partage d'écran  
+                    screenStream.getTracks().forEach(track => {
+                        track.onended = () => {
+                            console.log("Le partage d'écran a été arrêté.");
+                        };
+                    });
+                })
+                .catch((error) => {
+                    console.error("Erreur lors du partage d'écran : ", error);
+                });
+        });
+
+        // Fonction pour jouer la radio  
+        playRadioButton.addEventListener('click', () => {
+            const radioUrl = radioUrlInput.value.trim();
+            if (radioUrl) {
+                audioElement.src = radioUrl;
+
+                // Essayer de détecter le type du flux audio  
+                audioElement.addEventListener('error', () => {
+                    console.error("Erreur lors de la lecture de la radio, vérifiez l'URL ou le format.");
+                });
+
+                audioElement.play().then(() => {
+                    // Effacer le champ de saisie après lecture  
+                    radioUrlInput.value = '';
+                }).catch(error => {
+                    console.error("Erreur lors de la lecture de la radio : ", error);
+                });
+            }
+        });
+
+        // Fonction pour mettre la radio en pause  
+        pauseRadioButton.addEventListener('click', () => {
+            audioElement.pause();
+        });
+
+        // Fonction pour arrêter la radio  
+        stopRadioButton.addEventListener('click', () => {
+            audioElement.pause();
+            audioElement.currentTime = 0; // Remettre le temps à zéro  
+        });
+
+        // Ajuster le volume de la radio  
+        volumeControl.addEventListener('input', () => {
+            audioElement.volume = volumeControl.value; // Ajuster le volume  
+        });
+
+        // Fonction pour envoyer un message  
+        sendButton.addEventListener('click', () => {
+            sendMessage();
+        });
+
+        // Ajout de l'événement pour envoyer un message en appuyant sur "Entrée"
+        messageInput.addEventListener('keypress', (event) => {
+            if (event.key === 'Enter') {
+                sendMessage();
+            }
+        });
+
+        function sendMessage() {
+            const username = usernameInput.value.trim();
+            const message = messageInput.value.trim();
+            if (username && message) {
+                const messageData = { username, message };
+                messagesDiv.innerHTML += `<p><strong>${username}:</strong> ${message}</p>`;
+                messageInput.value = ''; // Réinitialiser le champ de message  
+                socket.emit('chatMessage', messageData); // Émettre le message  
+            }
+        }
+
+        // Recevoir les messages des autres utilisateurs  
+        socket.on('chatMessage', (data) => {
+            // Vérifiez si le message reçu est le même que celui que vous avez envoyé  
+            if (!messagesDiv.innerHTML.includes(`<strong>${data.username}:</strong> ${data.message}`)) {
+                messagesDiv.innerHTML += `<p><strong>${data.username}:</strong> ${data.message}</p>`;
+            }
+        });
+    </script>
+</body>
+
+</html>

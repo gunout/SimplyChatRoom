@@ -113,7 +113,7 @@
     </video>
 
     <header>
-        <h1>WebChat avec Webcams</h1>
+        <h1>Example WebChat avec Webcams</h1>
     </header>
 
     <div class="webcam-container" id="webcamContainer"></div>
@@ -129,10 +129,11 @@
         <input id="volumeControl" type="range" min="0" max="1" step="0.1" value="1"> <!-- Contrôle du volume -->
         <button id="shareScreenButton">Partager l'écran</button>
         <button id="stopWebcamButton">Arrêter Webcam</button>
+        <button id="restartWebcamButton">Redémarrer Webcam</button> <!-- Bouton pour redémarrer la webcam -->
     </div>
 
     <script>
-        const socket = io();
+        const socket = io('https://102.35.99.37:3000'); // Connexion au serveur  
         const webcamContainer = document.getElementById('webcamContainer');
         const messagesDiv = document.getElementById('messages');
         const usernameInput = document.getElementById('usernameInput');
@@ -144,16 +145,16 @@
         const volumeControl = document.getElementById('volumeControl');
         const shareScreenButton = document.getElementById('shareScreenButton');
         const stopWebcamButton = document.getElementById('stopWebcamButton');
+        const restartWebcamButton = document.getElementById('restartWebcamButton'); // Nouveau bouton pour redémarrer la webcam
 
         let localStream;
-        let audioElement = new Audio(); // Créer un élément audio pour la radio
 
         // Fonction pour commencer la webcam  
         async function startWebcam() {
             try {
                 localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
                 addLocalVideo(localStream);
-                socket.emit('broadcaster', localStream);
+                socket.emit('broadcaster', localStream); // Émettre le flux vidéo  
             } catch (error) {
                 console.error("Erreur d'accès à la webcam : ", error);
             }
@@ -163,7 +164,7 @@
             const videoElement = document.createElement('video');
             videoElement.srcObject = stream;
             videoElement.autoplay = true;
-            videoElement.muted = true;
+            videoElement.muted = true; // Muet pour éviter l'écho  
             webcamContainer.appendChild(videoElement);
         }
 
@@ -189,6 +190,7 @@
                     screenStream.getTracks().forEach(track => {
                         track.onended = () => {
                             console.log("Le partage d'écran a été arrêté.");
+                            webcamContainer.innerHTML = ''; // Effacer la fenêtre de partage d'écran  
                         };
                     });
                 })
@@ -205,6 +207,11 @@
                 });
                 webcamContainer.innerHTML = ''; // Effacer tous les éléments vidéo  
             }
+        });
+
+        // Fonction pour redémarrer la webcam  
+        restartWebcamButton.addEventListener('click', () => {
+            startWebcam(); // Redémarrer la webcam  
         });
 
         // Fonction pour jouer la radio  

@@ -13,9 +13,6 @@
             color: white;
             height: 100vh; /* Prendre toute la hauteur de la fenêtre */
             display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
             position: relative; /* Pour positionner la vidéo d'arrière-plan */
         }
 
@@ -33,24 +30,32 @@
             text-align: center;
             margin-bottom: 20px;
             z-index: 1; /* Pour s'assurer qu'il est au-dessus */
+            width: 100%; /* Prendre toute la largeur */
+            position: absolute; /* Positionner le titre au-dessus */
+            top: 20px; /* Distance du haut */
+        }
+
+        .container {
+            display: flex; /* Utiliser flexbox pour structurer le layout */
+            flex: 1; /* Occuper toute la hauteur */
+            margin-top: 80px; /* Pour laisser de l'espace pour l'en-tête */
         }
 
         .webcam-container {
             display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            max-width: 100%; /* Limite la largeur du conteneur */
-            margin-bottom: 20px;
-            z-index: 1; /* Pour s'assurer qu'il est au-dessus */
+            flex-direction: column; /* Aligner les webcams verticalement */
+            justify-content: flex-start;
+            align-items: center; /* Centrer horizontalement */
+            max-width: 250px; /* Largeur fixe pour le conteneur de webcam */
+            margin-right: 20px; /* Espace entre les webcams et le chat */
         }
 
         video {
             border: 2px solid #00ffcc;
             border-radius: 10px;
-            width: 250px; /* Taille fixe pour les vidéos */
+            width: 100%; /* Prendre la largeur du conteneur */
             height: auto;
             margin: 10px;
-            z-index: 1; /* S'assurer que les vidéos sont au-dessus */
         }
 
         .chat-container {
@@ -63,6 +68,7 @@
             width: 90%; /* Largeur fixe pour le chat */
             max-width: 400px; /* Limite de largeur pour le chat */
             z-index: 1; /* S'assurer que le chat est au-dessus */
+            margin: auto; /* Centrer le bloc de chat */
         }
 
         #messages {
@@ -102,6 +108,31 @@
         button:hover {
             background-color: #00cc99;
         }
+
+        /* Style pour la liste des utilisateurs */
+        .user-list {
+            position: absolute; /* Positionner en bas à droite */
+            bottom: 20px; /* Distance du bas */
+            right: 20px; /* Distance de la droite */
+            width: 200px; /* Largeur fixe pour la liste des utilisateurs */
+            background-color: rgba(26, 26, 26, 0.9);
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 0 20px rgba(0, 255, 204, 0.5);
+            z-index: 1; /* Pour s'assurer qu'il est au-dessus */
+            display: flex;
+            flex-direction: column;
+        }
+
+        .user-list h3 {
+            margin: 0 0 10px 0;
+            color: #00ffcc;
+        }
+
+        .user-item {
+            margin-bottom: 5px;
+            color: #00ffcc;
+        }
     </style>
     <script src="/socket.io/socket.io.js"></script>
 </head>
@@ -116,20 +147,29 @@
         <h1>Example WebChat avec Webcams</h1>
     </header>
 
-    <div class="webcam-container" id="webcamContainer"></div>
+    <div class="container">
+        <div class="webcam-container" id="webcamContainer">
+            <!-- Les vidéos de webcam seront ajoutées ici -->
+        </div>
 
-    <div class="chat-container">
-        <div id="messages"></div>
-        <input id="usernameInput" type="text" placeholder="Votre nom...">
-        <input id="messageInput" type="text" placeholder="Tapez votre message...">
-        <input id="radioUrlInput" type="text" placeholder="URL de la radio (ex: http://82.145.41.8:16123)">
-        <button id="playRadioButton">Jouer Radio</button>
-        <button id="pauseRadioButton">Mettre en Pause</button>
-        <button id="stopRadioButton">Arrêter</button>
-        <input id="volumeControl" type="range" min="0" max="1" step="0.1" value="1"> <!-- Contrôle du volume -->
-        <button id="shareScreenButton">Partager l'écran</button>
-        <button id="stopWebcamButton">Arrêter Webcam</button>
-        <button id="restartWebcamButton">Redémarrer Webcam</button> <!-- Bouton pour redémarrer la webcam -->
+        <div class="chat-container">
+            <div id="messages"></div>
+            <input id="radioUrlInput" type="text" placeholder="URL de la radio (ex: http://82.145.41.8:16123)"> <!-- Champ d'entrée de l'URL de la radio -->
+            <input id="usernameInput" type="text" placeholder="Votre nom..."> <!-- Champ pour le nom -->
+            <input id="messageInput" type="text" placeholder="Tapez votre message...">
+            <button id="playRadioButton">Jouer Radio</button>
+            <button id="pauseRadioButton">Mettre en Pause</button>
+            <button id="stopRadioButton">Arrêter</button>
+            <input id="volumeControl" type="range" min="0" max="1" step="0.1" value="1"> <!-- Contrôle du volume -->
+            <button id="shareScreenButton">Partager l'écran</button>
+            <button id="stopWebcamButton">Arrêter Webcam</button>
+            <button id="restartWebcamButton">Redémarrer Webcam</button> <!-- Bouton pour redémarrer la webcam -->
+        </div>
+    </div>
+
+    <div class="user-list" id="userList">
+        <h3>Utilisateurs Connectés</h3>
+        <!-- Les utilisateurs connectés seront affichés ici -->
     </div>
 
     <script>
@@ -145,9 +185,11 @@
         const volumeControl = document.getElementById('volumeControl');
         const shareScreenButton = document.getElementById('shareScreenButton');
         const stopWebcamButton = document.getElementById('stopWebcamButton');
-        const restartWebcamButton = document.getElementById('restartWebcamButton'); // Nouveau bouton pour redémarrer la webcam
+        const restartWebcamButton = document.getElementById('restartWebcamButton'); // Nouveau bouton pour redémarrer la webcam  
+        const userList = document.getElementById('userList'); // Liste des utilisateurs
 
         let localStream;
+        let users = new Set(); // Utiliser un Set pour garder la trace des utilisateurs
 
         // Fonction pour commencer la webcam  
         async function startWebcam() {
@@ -263,7 +305,22 @@
                 messagesDiv.innerHTML += `<p><strong>${username}:</strong> ${message}</p>`;
                 messageInput.value = ''; // Réinitialiser le champ de message  
                 socket.emit('chatMessage', messageData); // Émettre le message  
+
+                // Ajouter l'utilisateur à la liste des utilisateurs connectés  
+                if (username) {
+                    users.add(username);
+                    updateUserList();
+                }
             }
+        }
+
+        function updateUserList() {
+            userList.innerHTML = '<h3>Utilisateurs Connectés</h3>'; // Réinitialiser la liste  
+            users.forEach(user => {
+                userList.innerHTML += `<div class="user-item">${user}</div>`; // Ajouter chaque utilisateur  
+            });
+            // Émettre la mise à jour des utilisateurs à tous les clients  
+            socket.emit('updateUserList', Array.from(users));
         }
 
         // Recevoir les messages des autres utilisateurs  
@@ -271,6 +328,12 @@
             if (!messagesDiv.innerHTML.includes(`<strong>${data.username}:</strong> ${data.message}`)) {
                 messagesDiv.innerHTML += `<p><strong>${data.username}:</strong> ${data.message}</p>`;
             }
+        });
+
+        // Recevoir les mises à jour de la liste des utilisateurs  
+        socket.on('updateUserList', (userArray) => {
+            users = new Set(userArray); // Mettre à jour le Set des utilisateurs  
+            updateUserList(); // Réactualiser l'affichage de la liste  
         });
     </script>
 </body>

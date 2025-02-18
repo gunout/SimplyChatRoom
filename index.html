@@ -14,6 +14,7 @@
             height: 100vh; /* Prendre toute la hauteur de la fenêtre */
             display: flex;
             position: relative; /* Pour positionner la vidéo d'arrière-plan */
+            flex-direction: column; /* Aligner les éléments verticalement */
         }
 
         video.background-video {
@@ -43,19 +44,20 @@
 
         .webcam-container {
             display: flex;
-            flex-direction: column; /* Aligner les webcams verticalement */
-            justify-content: flex-start;
-            align-items: center; /* Centrer horizontalement */
+            flex-wrap: wrap; /* Permettre à plusieurs vidéos de s'aligner */
+            justify-content: flex-start; /* Aligner les vidéos à gauche */
+            align-items: flex-start; /* Aligner en haut */
+            gap: 10px; /* Espacement entre les vidéos */
             max-width: 250px; /* Largeur fixe pour le conteneur de webcam */
             margin-right: 20px; /* Espace entre les webcams et le chat */
+            overflow-y: auto; /* Activer le défilement si nécessaire */
         }
 
         video {
             border: 2px solid #00ffcc;
             border-radius: 10px;
-            width: 100%; /* Prendre la largeur du conteneur */
-            height: auto;
-            margin: 10px;
+            width: 120px; /* Largeur fixe pour chaque vidéo */
+            height: auto; /* Hauteur automatique */
         }
 
         .chat-container {
@@ -139,7 +141,7 @@
 
 <body>
     <video class="background-video" autoplay loop muted>
-        <source src="https://raw.githubusercontent.com/gunout/SimplyChatRoom/main/beach.mp4" type="video/mp4"> <!-- Lien direct à la vidéo -->
+        <source src="https://raw.githubusercontent.com/gunout/SimplyChatRoom/main/beach.mp4" type="video/mp4">
         Votre navigateur ne prend pas en charge la vidéo HTML5.
     </video>
 
@@ -154,85 +156,131 @@
 
         <div class="chat-container">
             <div id="messages"></div>
-            <input id="radioUrlInput" type="text" placeholder="URL de la radio (ex: http://82.145.41.8:16123)"> <!-- Champ d'entrée de l'URL de la radio -->
-            <input id="usernameInput" type="text" placeholder="Votre nom..."> <!-- Champ pour le nom -->
-            <input id="messageInput" type="text" placeholder="Tapez votre message...">
-            <button id="playRadioButton">Jouer Radio</button>
-            <button id="pauseRadioButton">Mettre en Pause</button>
-            <button id="stopRadioButton">Arrêter</button>
-            <input id="volumeControl" type="range" min="0" max="1" step="0.1" value="1"> <!-- Contrôle du volume -->
+            <input id="radioUrlInput" type="text" placeholder="URL de la radio (ex: http://82.145.41.8:16123)">
+            <input id="usernameInput" type="text" placeholder="Votre nom..." disabled>
+            <input id="messageInput" type="text" placeholder="Tapez votre message..." disabled>
             <button id="shareScreenButton">Partager l'écran</button>
+            <button id="startWebcamButton">Démarrer Webcam</button>
             <button id="stopWebcamButton">Arrêter Webcam</button>
-            <button id="restartWebcamButton">Redémarrer Webcam</button> <!-- Bouton pour redémarrer la webcam -->
+            <button id="playRadioButton">Jouer la Radio</button>
+            <button id="stopRadioButton">Arrêter la Radio</button>
+            <input id="volumeControl" type="range" min="0" max="1" step="0.1" value="1"> <!-- Contrôle du volume -->
         </div>
     </div>
 
     <div class="user-list" id="userList">
         <h3>Utilisateurs Connectés</h3>
-        <!-- Les utilisateurs connectés seront affichés ici -->
     </div>
 
     <script>
+        // Demander à l'utilisateur de saisir son nom d'utilisateur avant d'accéder au chat  
+        let username = prompt("Entrez votre nom d'utilisateur:");
+        while (!username) {
+            username = prompt("Nom d'utilisateur manquant. Veuillez entrer un nom d'utilisateur:");
+        }
+
         const socket = io('https://102.35.99.37:3000'); // Connexion au serveur  
         const webcamContainer = document.getElementById('webcamContainer');
         const messagesDiv = document.getElementById('messages');
         const usernameInput = document.getElementById('usernameInput');
         const messageInput = document.getElementById('messageInput');
         const radioUrlInput = document.getElementById('radioUrlInput');
-        const playRadioButton = document.getElementById('playRadioButton');
-        const pauseRadioButton = document.getElementById('pauseRadioButton');
-        const stopRadioButton = document.getElementById('stopRadioButton');
-        const volumeControl = document.getElementById('volumeControl');
-        const shareScreenButton = document.getElementById('shareScreenButton');
-        const stopWebcamButton = document.getElementById('stopWebcamButton');
-        const restartWebcamButton = document.getElementById('restartWebcamButton'); // Nouveau bouton pour redémarrer la webcam  
-        const userList = document.getElementById('userList'); // Liste des utilisateurs
+        const userList = document.getElementById('userList');
 
-        let localStream;
-        let users = new Set(); // Utiliser un Set pour garder la trace des utilisateurs
+        // Émettre l'événement 'join' avec le nom d'utilisateur  
+        socket.emit('join', username);
+        usernameInput.value = username; // Stocker le nom d'utilisateur pour l'envoi de messages  
+        messageInput.disabled = false; // Activer le champ de message  
 
-        // Fonction pour commencer la webcam  
-        async function startWebcam() {
-            try {
-                localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-                addLocalVideo(localStream);
-                socket.emit('broadcaster', localStream); // Émettre le flux vidéo  
-            } catch (error) {
-                console.error("Erreur d'accès à la webcam : ", error);
-            }
-        }
-
-        function addLocalVideo(stream) {
-            const videoElement = document.createElement('video');
-            videoElement.srcObject = stream;
-            videoElement.autoplay = true;
-            videoElement.muted = true; // Muet pour éviter l'écho  
-            webcamContainer.appendChild(videoElement);
-        }
-
-        // Recevoir le flux vidéo des autres utilisateurs  
-        socket.on('broadcaster', (stream) => {
-            const videoElement = document.createElement('video');
-            videoElement.srcObject = stream;
-            videoElement.autoplay = true;
-            webcamContainer.appendChild(videoElement);
+        // Affichage de la mise à jour de la liste des utilisateurs connectés  
+        socket.on('updateUserList', (userArray) => {
+            userList.innerHTML = '<h3>Utilisateurs Connectés</h3>'; // Réinitialiser la liste  
+            userArray.forEach(user => {
+                userList.innerHTML += `<div class="user-item">${user}</div>`; // Ajouter chaque utilisateur  
+            });
         });
 
-        // Démarrer la webcam lorsque la page est chargée  
-        window.onload = startWebcam;
+        // Recevoir le flux vidéo d'un autre utilisateur  
+        socket.on('viewer', (data) => {
+            const videoElement = document.createElement('video');
+            videoElement.srcObject = data.stream; // Assurez-vous que le stream est correctement configuré  
+            videoElement.autoplay = true;
+            videoElement.id = data.id; // Ajoutez un ID pour identifier le flux  
+            webcamContainer.appendChild(videoElement); // Ajouter à la zone de webcam  
+        });
+
+        // Envoi de messages avec "Entrée"
+        messageInput.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') { // Vérifier si la touche "Entrée" est pressée  
+                const message = messageInput.value.trim();
+                if (message) {
+                    const messageData = { username, message };
+                    messagesDiv.innerHTML += `<p><strong>${username}:</strong> ${message}</p>`;
+                    socket.emit('chatMessage', messageData); // Émettre le message  
+                    messageInput.value = ''; // Réinitialiser le champ de message  
+                }
+                event.preventDefault(); // Éviter que le formulaire soit soumis ou d'autres comportements indésirables  
+            }
+        });
+
+        // Recevoir les messages des autres utilisateurs  
+        socket.on('chatMessage', (data) => {
+            // Vérifier si le message est déjà affiché pour éviter les doublons  
+            if (!messagesDiv.innerHTML.includes(`<strong>${data.username}:</strong> ${data.message}`)) {
+                messagesDiv.innerHTML += `<p><strong>${data.username}:</strong> ${data.message}</p>`;
+            }
+        });
+
+        // Fonction pour jouer la radio lorsque l'utilisateur appuie sur le bouton "Jouer la Radio"
+        document.getElementById('playRadioButton').addEventListener('click', () => {
+            const radioUrl = radioUrlInput.value.trim();
+            if (radioUrl) {
+                playRadio(radioUrl);
+            }
+        });
+
+        // Fonction pour arrêter la radio lorsque l'utilisateur appuie sur le bouton "Arrêter la Radio"
+        document.getElementById('stopRadioButton').addEventListener('click', () => {
+            if (audioElement) {
+                audioElement.pause();
+                audioElement.currentTime = 0; // Remettre le temps à zéro  
+            }
+        });
+
+        // Contrôle de volume  
+        const volumeControl = document.getElementById('volumeControl');
+        let audioElement = new Audio(); // Créer un nouvel élément audio
+
+        volumeControl.addEventListener('input', () => {
+            if (audioElement) {
+                audioElement.volume = volumeControl.value; // Ajuster le volume  
+            }
+        });
+
+        function playRadio(url) {
+            audioElement.src = url;
+            audioElement.play().then(() => {
+                console.log("Radio en cours de lecture");
+            }).catch(error => {
+                console.error("Erreur lors de la lecture de la radio : ", error);
+            });
+        }
 
         // Fonction pour partager l'écran  
-        shareScreenButton.addEventListener('click', () => {
+        document.getElementById('shareScreenButton').addEventListener('click', () => {
             navigator.mediaDevices.getDisplayMedia({ video: true, audio: true })
                 .then((screenStream) => {
-                    addLocalVideo(screenStream);
+                    const videoElement = document.createElement('video');
+                    videoElement.srcObject = screenStream;
+                    videoElement.autoplay = true;
+                    webcamContainer.appendChild(videoElement);
+
                     socket.emit('broadcaster', screenStream);
 
-                    // Gérer la fin du partage d'écran  
                     screenStream.getTracks().forEach(track => {
                         track.onended = () => {
                             console.log("Le partage d'écran a été arrêté.");
-                            webcamContainer.innerHTML = ''; // Effacer la fenêtre de partage d'écran  
+                            webcamContainer.removeChild(videoElement); 
                         };
                     });
                 })
@@ -241,99 +289,32 @@
                 });
         });
 
+        // Fonction pour démarrer la webcam  
+        document.getElementById('startWebcamButton').addEventListener('click', async () => {
+            try {
+                localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                const videoElement = document.createElement('video');
+                videoElement.srcObject = localStream;
+                videoElement.autoplay = true;
+                webcamContainer.appendChild(videoElement);
+                
+                socket.emit('broadcaster', localStream); // Émettre le flux de la webcam à tous les utilisateurs  
+            } catch (error) {
+                console.error("Erreur d'accès à la webcam : ", error);
+            }
+        });
+
         // Fonction pour arrêter la webcam  
-        stopWebcamButton.addEventListener('click', () => {
+        document.getElementById('stopWebcamButton').addEventListener('click', () => {
             if (localStream) {
-                localStream.getTracks().forEach(track => {
-                    track.stop(); // Arrêter les pistes de la webcam  
-                });
-                webcamContainer.innerHTML = ''; // Effacer tous les éléments vidéo  
+                localStream.getTracks().forEach(track => track.stop()); 
+                webcamContainer.innerHTML = ''; // Effacer les vidéos de la webcam  
+                console.log("Webcam arrêtée.");
             }
         });
 
-        // Fonction pour redémarrer la webcam  
-        restartWebcamButton.addEventListener('click', () => {
-            startWebcam(); // Redémarrer la webcam  
-        });
-
-        // Fonction pour jouer la radio  
-        playRadioButton.addEventListener('click', () => {
-            const radioUrl = radioUrlInput.value.trim();
-            if (radioUrl) {
-                audioElement.src = radioUrl;
-
-                audioElement.addEventListener('error', () => {
-                    console.error("Erreur lors de la lecture de la radio, vérifiez l'URL ou le format.");
-                });
-
-                audioElement.play().then(() => {
-                    radioUrlInput.value = '';
-                }).catch(error => {
-                    console.error("Erreur lors de la lecture de la radio : ", error);
-                });
-            }
-        });
-
-        // Fonction pour mettre la radio en pause  
-        pauseRadioButton.addEventListener('click', () => {
-            audioElement.pause();
-        });
-
-        // Fonction pour arrêter la radio  
-        stopRadioButton.addEventListener('click', () => {
-            audioElement.pause();
-            audioElement.currentTime = 0; // Remettre le temps à zéro  
-        });
-
-        // Ajuster le volume de la radio  
-        volumeControl.addEventListener('input', () => {
-            audioElement.volume = volumeControl.value; // Ajuster le volume  
-        });
-
-        // Ajout de l'événement pour envoyer un message en appuyant sur "Entrée"
-        messageInput.addEventListener('keypress', (event) => {
-            if (event.key === 'Enter') {
-                sendMessage();
-            }
-        });
-
-        function sendMessage() {
-            const username = usernameInput.value.trim();
-            const message = messageInput.value.trim();
-            if (username && message) {
-                const messageData = { username, message };
-                messagesDiv.innerHTML += `<p><strong>${username}:</strong> ${message}</p>`;
-                messageInput.value = ''; // Réinitialiser le champ de message  
-                socket.emit('chatMessage', messageData); // Émettre le message  
-
-                // Ajouter l'utilisateur à la liste des utilisateurs connectés  
-                if (username) {
-                    users.add(username);
-                    updateUserList();
-                }
-            }
-        }
-
-        function updateUserList() {
-            userList.innerHTML = '<h3>Utilisateurs Connectés</h3>'; // Réinitialiser la liste  
-            users.forEach(user => {
-                userList.innerHTML += `<div class="user-item">${user}</div>`; // Ajouter chaque utilisateur  
-            });
-            // Émettre la mise à jour des utilisateurs à tous les clients  
-            socket.emit('updateUserList', Array.from(users));
-        }
-
-        // Recevoir les messages des autres utilisateurs  
-        socket.on('chatMessage', (data) => {
-            if (!messagesDiv.innerHTML.includes(`<strong>${data.username}:</strong> ${data.message}`)) {
-                messagesDiv.innerHTML += `<p><strong>${data.username}:</strong> ${data.message}</p>`;
-            }
-        });
-
-        // Recevoir les mises à jour de la liste des utilisateurs  
-        socket.on('updateUserList', (userArray) => {
-            users = new Set(userArray); // Mettre à jour le Set des utilisateurs  
-            updateUserList(); // Réactualiser l'affichage de la liste  
+        socket.on('unauthorized', (message) => {
+            alert(message);
         });
     </script>
 </body>

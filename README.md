@@ -23,3 +23,5 @@ Simple Chat Room
 2 . RUN     
 
     node server.js
+
+PS : LINE 1 OF script.js change the ip by your ip public !!!

@@ -1,4 +1,3 @@
-
         const socket = io('https://102.35.99.37:3000'); // Connexion au serveur  
         const webcamContainer = document.getElementById('webcamContainer');
         const messagesDiv = document.getElementById('messages');

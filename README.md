@@ -26,11 +26,15 @@ Simple Chat Room
 
 # PS : LINE 1 OF "script.js" change the ip by your ip public !!!
 
+
+
 TU PEUX RAJOUTER LA FONCTION SUIVANTE DANS LE FICHIER index.html 
 
 POUR RECEVOIR LES FLUX D'AUTRES WEBCAMS UTILISATEURS !
 
+
 # fonctions recevoir les flux des autres utilisateurs 
+
 
 // Recevoir les flux vidéo des autres utilisateurs
 

@@ -51,4 +51,4 @@ webcamContainer.appendChild(videoElement);
 });
 
 
-# ___________________ Gunout 2025 _____________________
+# _______________ Gunout 2025 _________________

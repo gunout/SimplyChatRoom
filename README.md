@@ -25,3 +25,7 @@ Simple Chat Room
     node server.js
 
 PS : LINE 1 OF script.js change the ip by your ip public !!!
+
+TU PEUX RAJOUTER LA FONCTION SUIVANTE DANS LE FICHIER index.html POUR RECEVOIR LES FLUX D'AUTRES WEBCAMS UTILISATEURS !
+
+

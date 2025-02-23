@@ -28,9 +28,9 @@ Simple Chat Room
 
 
 
-TU PEUX RAJOUTER LA FONCTION SUIVANTE DANS LE FICHIER index.html 
+Tu peux rajouter la fonction suivante dans "index.html" 
 
-POUR RECEVOIR LES FLUX D'AUTRES WEBCAMS UTILISATEURS !
+pour recevoir les fluxs des autres utilisateurs !
 
 
 # fonctions recevoir les flux des autres utilisateurs 
